@@ -57,7 +57,12 @@ while True:
     if segundo != old:
         print(segundo)
         old = segundo
-        time.sleep(60)        
+        time.sleep(60)
+
+# Código discord:
+    # teste de sincronização segundos
+    #tempo = time.time()
+    #await canal.send(f"Executando no segundo cheio: {tempo} - {time.strftime('%M:%S', time.gmtime(tempo))}")      
 
 #print(f'\n{time.strftime('%M:%S', time.gmtime(tempo/1000))}')
 

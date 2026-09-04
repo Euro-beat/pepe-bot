@@ -16,14 +16,6 @@ load_dotenv()
 
 DISC_TOKEN = getenv('DISC_TOKEN')
 
-# tenta não explodir o bot ao dar Ctrl + C
-def sleep_terminal(signum, frame):
-    print('\nBot desligando.\n')
-    sleep()
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, sleep_terminal)
-
 # Configuração de permissões básicas do bot
 intents = discord.Intents.default()
 intents.message_content = True
@@ -37,7 +29,7 @@ def calcular_espera():
 
 # {inicialização bot} ---------------------------------------------------------------
 
-print_tempo = False # -> para retornar no chat o retorno da API
+avisar_pepe = (None, 'off')
 
 @bot.event
 async def on_ready():
@@ -45,7 +37,7 @@ async def on_ready():
 
     canal = bot.get_channel(1530050331495628890)
     if canal:
-        await canal.send("Bot #online!")
+        await canal.send(f"Bot #online! <@{326041751024304139}>")
         await canal.send("https://klipy.com/gifs/undertaker-still-alive-1")
 
     # inicia tarefa que roda a cada X tempo
@@ -64,6 +56,18 @@ async def sleep(ctx):
     await ctx.send("https://tenor.com/view/sleep-gif-12944899486400191725")
     await bot.close()
     print('\nBot desligando.\n')
+
+async def sleep2():
+    """Desliga o bot com Ctrl + C"""
+    canal = bot.get_channel(1530050331495628890)
+
+    if canal:
+        if tarefa_sincronizada.is_running():
+            tarefa_sincronizada.stop()
+        await canal.send("Bot #desonline...")
+        await canal.send("https://tenor.com/view/sleep-gif-12944899486400191725")
+        await bot.close()
+        print('\nBot desligando.\n')
 
 @bot.command()
 async def pingar(ctx):
@@ -203,7 +207,7 @@ async def pepe(ctx, *, mensagem: str):
         await ctx.send(f'{e}, burro.')
 
 @pepe.error
-async def pepe_error(error):
+async def pepe_error(ctx, error):
     global pepe_value
     canal = bot.get_channel(1530050331495628890)
 
@@ -213,12 +217,11 @@ async def pepe_error(error):
 
 
 
-#{loop get na API Binance}---------------------------------------------------------------------------------------------------
+# {loop get na API Binance}---------------------------------------------------------------------------------------------------
 
 
 @tasks.loop(seconds=1)
 async def tarefa_sincronizada():
-    global print_tempo
     global pepe_value
     global avisar_pepe
     # Executa sua lógica exatamente na virada do segundo
@@ -235,11 +238,16 @@ async def tarefa_sincronizada():
         await canal.send(f"Ocorreu um erro ao consultar a API: {e}")
 
     if canal:
-        #tempo = time.time()
-        if print_tempo:
-            # teste de sincronização segundos
-            #await canal.send(f"Executando no segundo cheio: {tempo} - {time.strftime('%M:%S', time.gmtime(tempo))}")
-            await canal.send(f'PEPE agora: {dados["price"]}')
+        match avisar_pepe[1]:
+            case 'always':
+                if avisar_pepe[0] == pepe_value:
+                    await canal.send(f'PEPE bateu o valor indicado: {dados["price"]} <@{326041751024304139}>')
+            case 'one':
+                if avisar_pepe[0] == pepe_value:
+                    await canal.send(f'PEPE bateu o valor indicado: {dados["price"]} <@{326041751024304139}>')
+                    avisar_pepe[1] = 'off'
+
+
 
 @tarefa_sincronizada.before_loop
 async def antes_da_tarefa():
@@ -250,6 +258,25 @@ async def antes_da_tarefa():
     espera = calcular_espera()
     await asyncio.sleep(espera)
 
+
+# {TENTA desligar o bot com segurança com Ctrl + C terminal}---------------------------------------------------------------------------------------------------
+
+# tenta não explodir o bot ao dar Ctrl + C
+def sleep_terminal(signum, frame):
+    try:
+        # Verifica se o loop do bot está rodando
+        if bot.loop and bot.loop.is_running():
+            # Injeta a função assíncrona 'sleep()' no loop do bot
+            future = asyncio.run_coroutine_threadsafe(sleep2(), bot.loop)
+            # Aguarda a execução terminar (com um timeout de segurança de 5 segundos)
+            future.result(timeout=5)
+    except Exception as e:
+        print(f"Erro ao desligar o bot limpamente: {e}")
+    finally:
+        print("Saindo do terminal.\n")
+        sys.exit(0)
+
+signal.signal(signal.SIGINT, sleep_terminal)
 
 
 # Inicia o bot
