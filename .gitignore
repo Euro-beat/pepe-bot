@@ -1,0 +1,8 @@
+# Arquivos de teste
+test.py
+
+# Cálculos de viabilidade (parece ok)
+viabilidade/
+
+# Variáveis de ambiente (segurança)
+.env

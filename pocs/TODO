@@ -1,0 +1,12 @@
+integrar com binance
+
+rodar simulações com o klines
+
+finalizados:
+    fazer bot pingar - ok (<@{código user}>)
+
+    jogar tudo num main e integrar bot com script de compra e venda (threading ou multiprocess? pesquisar) -> tudo no main.py rodando legal
+
+    pensar cloud ou de deixar rodando mesmo -> rodando local legal
+
+    envio do gráfico pelo bot - ok
