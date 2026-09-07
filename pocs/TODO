@@ -1,6 +1,6 @@
 integrar com binance
 
-rodar simulações com o klines
+*rodar simulações com o klines -> detectar padrão de entrada e adicionar linhas horizontais no grafico (WIP)
 
 finalizados:
     fazer bot pingar - ok (<@{código user}>)
