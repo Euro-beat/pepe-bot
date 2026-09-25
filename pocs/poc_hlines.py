@@ -5,7 +5,7 @@ import requests
 import discord
 import io
 
-mensagem = '5m'
+mensagem = '3m'
 
 """Gera um gráfico e envia direto no chat"""
 if ' ' in mensagem:
@@ -70,7 +70,7 @@ else:
     valores_frequentes = []
 
     # Validações fodas
-    for diff in [0.00000002, 0.00000001]:
+    for diff in [0.00000003, 0.00000002, 0.00000001]:
         for i in range(3):
             if float(frequent_high[0]) == float(frequent_low[i])+diff:
                 valores_frequentes = [frequent_high[0], frequent_low[i]]
@@ -84,11 +84,27 @@ else:
             if float(frequent_high[i])-diff == float(frequent_low[1]):
                 valores_frequentes = [frequent_high[i], frequent_low[1]]
 
-    valores_frequentes_format = [
-         [(quartil_time, float(valores_frequentes[0])), (fim_time, float(valores_frequentes[0]))],
-         [(quartil_time, float(valores_frequentes[1])), (fim_time, float(valores_frequentes[1]))]
-    ]
+    print(f'Valores frequentes detectados: {valores_frequentes}')
 
+    try:
+        valores_frequentes_format = [
+            [(quartil_time, float(valores_frequentes[0])), (fim_time, float(valores_frequentes[0]))],
+            [(quartil_time, float(valores_frequentes[1])), (fim_time, float(valores_frequentes[1]))]
+        ]
+
+    except IndexError:
+        print('Nenhum valor frequente detectado.')
+        valores_frequentes_format = []
+
+    except Exception as e:
+        print(f'Erro excepcional: {e}')
+
+    print(f'Max high: {df["High"].max()}')
+    print(f'Min low: {df["Low"].min()}')
+
+    # Check para marcação horizontal no gráfico
+    graph_amplitude = abs(float(df["High"].max())) - abs(float(df["Low"].min()))
+    print(f'Amplitude: {graph_amplitude:.8f}')
 
     ##########################
     
@@ -128,11 +144,14 @@ else:
         volume=False,
         returnfig=True,
         alines=config_hlines,
+        show_nontrading=True,
         #vlines = config_vlines
         #figratio=(20, 15)
     )
 
-    axlist[0].yaxis.set_major_locator(ticker.MultipleLocator(0.00000001))
+    if graph_amplitude <= 0.00000030:
+        axlist[0].yaxis.set_major_locator(ticker.MultipleLocator(0.00000001))
+
     axlist[0].yaxis.set_major_formatter(ticker.FormatStrFormatter('%.8f'))
     
     # Cria o buffer de memória

@@ -33,7 +33,7 @@ avisar_pepe = (None, 'off')
 
 @bot.event
 async def on_ready():
-    print(f'poc-bot #online')
+    print('\npepe-bot #online\n')
 
     canal = bot.get_channel(1530050331495628890)
     if canal:
@@ -43,38 +43,43 @@ async def on_ready():
     # inicia tarefa que roda a cada X tempo
     if not tarefa_sincronizada.is_running():
             tarefa_sincronizada.start()
-            print(f"Iniciado tarefa de verificação contínua.")
+            print(f"Iniciado tarefa de verificação contínua.\n")
 
 # {comandos bot} ---------------------------------------------------------------
+
 
 @bot.command()
 async def sleep(ctx):
     """Desliga o bot"""
     if tarefa_sincronizada.is_running():
         tarefa_sincronizada.stop()
-    await ctx.send("Bot #desonline...")
+    await ctx.send(f"Bot #desonline... <@{326041751024304139}>")
     await ctx.send("https://tenor.com/view/sleep-gif-12944899486400191725")
     await bot.close()
-    print('\nBot desligando.\n')
+    print('\nBot desligado.\n')
 
-async def sleep2():
-    """Desliga o bot com Ctrl + C"""
-    canal = bot.get_channel(1530050331495628890)
-
-    if canal:
-        if tarefa_sincronizada.is_running():
-            tarefa_sincronizada.stop()
-        await canal.send("Bot #desonline...")
-        await canal.send("https://tenor.com/view/sleep-gif-12944899486400191725")
-        await bot.close()
-        print('\nBot desligando.\n')
+# {comando} ---------------------------------------------------------------
 
 @bot.command()
-async def pingar(ctx):
+async def pingar(ctx, *, mensagem: float):
     """Te pinga"""
-    await asyncio.sleep(3)
-    await ctx.send(f"vai se foder <@{326041751024304139}>")
-    print('\nEuro pingado.\n')
+    try:
+        await asyncio.sleep(mensagem)
+        await ctx.send(f"vai se foder <@{326041751024304139}>")
+        print('\nEuro pingado.\n')
+    except Exception as e:
+            await ctx.send(f'{e}, burro.')
+
+@pingar.error
+async def teste_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        try:
+            await ctx.send(f"vai se foder <@{326041751024304139}>")
+            print('\nEuro pingado.\n')
+        except Exception as e:
+            await ctx.send(f'{e}, burro.')
+
+# {comando} ---------------------------------------------------------------
 
 # estrutura base para comandos com parâmetros do usuário -> replicável
 @bot.command()
@@ -96,15 +101,16 @@ async def teste_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send('Número de argumentos insuficientes (2), burro.')
 
+# {comando} ---------------------------------------------------------------
 
 @bot.command()
 async def grafico(ctx, *, mensagem: str):
-    """Gera um gráfico e envia direto no chat"""
+    """Retorna o gráfico de preço histórico no chat"""
     try:
         if ' ' in mensagem:
-            await ctx.send('Número de argumentos demais (1), burro.')
+            print('Número de argumentos demais (1), burro.')
         elif 'm' not in mensagem and 'h' not in mensagem:
-            await ctx.send('Precisa definir o tipo de intervalo (m/h), brow...')
+            print('Precisa definir o tipo de intervalo (m/h), brow...')
         else:
             url = "https://api.binance.com/api/v3/klines"
 
@@ -114,16 +120,57 @@ async def grafico(ctx, *, mensagem: str):
                 "limit": 100
             }
 
-            # Nota: Em um bot de produção, prefira usar 'aiohttp' em vez de 'requests' 
-            # para evitar que o bot trave/congele enquanto espera a resposta da API.
             response = requests.get(url, params=params)
             data = response.json()
-            
+
             columns = [
                 'Time', 'Open', 'High', 'Low', 'Close', 'Volume', 
                 'CloseTime', 'QuoteVolume', 'Trades', 'TakerBuyBase', 'TakerBuyQuote', 'Ignore'
             ]
             df = pd.DataFrame(data, columns=columns)
+
+            # Análise do gráfico
+            quartil_time = pd.to_datetime(df['Time'].quantile(0.66), unit='ms')
+
+            fim_time = pd.to_datetime(df['Time'].iloc[-1], unit='ms')
+
+            frequent_high = df['High'].value_counts().index[:4]
+            frequent_low = df['Low'].value_counts().index[:4]
+
+            valores_frequentes = []
+
+            # Validações fodas
+            for diff in [0.00000003, 0.00000002, 0.00000001]:
+                for i in range(3):
+                    if float(frequent_high[0]) == float(frequent_low[i]) + diff:
+                        valores_frequentes = [frequent_high[0], frequent_low[i]]
+                for i in range(3):
+                    if float(frequent_high[i]) - diff == float(frequent_low[0]):
+                        valores_frequentes = [frequent_high[i], frequent_low[0]]
+                for i in range(3):
+                    if float(frequent_high[1]) == float(frequent_low[i]) + diff:
+                        valores_frequentes = [frequent_high[1], frequent_low[i]]
+                for i in range(3):
+                    if float(frequent_high[i]) - diff == float(frequent_low[1]):
+                        valores_frequentes = [frequent_high[i], frequent_low[1]]
+
+            try:
+                valores_frequentes_format = [
+                    [(quartil_time, float(valores_frequentes[0])), (fim_time, float(valores_frequentes[0]))],
+                    [(quartil_time, float(valores_frequentes[1])), (fim_time, float(valores_frequentes[1]))]
+                ]
+
+            except IndexError:
+                print('Nenhum valor frequente detectado.')
+                valores_frequentes_format = []
+
+            except Exception as e:
+                print(f'Erro excepcional: {e}')
+
+            # Check para gridlines no gráfico
+            graph_amplitude = abs(float(df["High"].max())) - abs(float(df["Low"].min()))
+
+            # Fim
             
             df['Time'] = pd.to_datetime(df['Time'], unit='ms')
             df.set_index('Time', inplace=True)
@@ -137,6 +184,13 @@ async def grafico(ctx, *, mensagem: str):
                 edge='inherit', 
                 wick='inherit'
             )
+
+            config_hlines = {
+                        'alines': valores_frequentes_format, # Datas onde as linhas verticais vão passar
+                        'colors': ['blue', 'blue'],           # Cores das linhas
+                        'linestyle': '-',                      # Estilo ponto e traço
+                        'linewidths': 0.5    
+                    }
             
             # Geramos a figura através do mplfinance
             fig, axlist = mpf.plot(
@@ -146,10 +200,16 @@ async def grafico(ctx, *, mensagem: str):
                 ylabel='',
                 volume=False,
                 returnfig=True,
+                alines=config_hlines,
+                show_nontrading=True,
+                #vlines = config_vlines
                 #figratio=(20, 15)
             )
 
-            axlist[0].yaxis.set_major_locator(ticker.MultipleLocator(0.00000001))
+            # Verifica se o gráfico tem muitos valores distintos para traçar o grid
+            if graph_amplitude <= 0.00000030:
+                axlist[0].yaxis.set_major_locator(ticker.MultipleLocator(0.00000001))
+
             axlist[0].yaxis.set_major_formatter(ticker.FormatStrFormatter('%.8f'))
             
             # Cria o buffer de memória
@@ -160,7 +220,7 @@ async def grafico(ctx, *, mensagem: str):
             
             # Transforma o buffer no arquivo anexável do Discord
             imagem = discord.File(buffer, filename=f"PEPEUSDC_{mensagem}.png")
-            
+
             # Envia a mensagem de texto com o anexo embaixo
             await ctx.send(f"Aqui está o gráfico que você pediu ({mensagem}):", file=imagem)
 
@@ -172,9 +232,11 @@ async def teste_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send('Número de argumentos insuficiente (1), burro.')
 
+# {comando} ---------------------------------------------------------------
+
 @bot.command()
 async def pepe(ctx, *, mensagem: str):
-    """Alterna entre ligado e desligado a verificação da API da """
+    """Consulta valor atual ou configura alerta de preço"""
     try:
         global avisar_pepe
 
@@ -209,23 +271,21 @@ async def pepe(ctx, *, mensagem: str):
 @pepe.error
 async def pepe_error(ctx, error):
     global pepe_value
-    canal = bot.get_channel(1530050331495628890)
+    #canal = bot.get_channel(1530050331495628890)
 
     if isinstance(error, commands.MissingRequiredArgument):
-        if canal:
-            await canal.send(f'PEPE agora: {pepe_value}')
+        await ctx.send(f'PEPE agora: {pepe_value}')
 
 
-
-# {loop get na API Binance}---------------------------------------------------------------------------------------------------
+# {loop GET na API Binance}---------------------------------------------------------------------------------------------------
 
 
 @tasks.loop(seconds=1)
 async def tarefa_sincronizada():
     global pepe_value
     global avisar_pepe
-    # Executa sua lógica exatamente na virada do segundo
-    canal = bot.get_channel(1530050331495628890)
+
+    canal = bot.get_channel(1552912057320345642)
 
     try:
         resposta = requests.get("https://api.binance.com/api/v3/ticker/price", params={"symbol": "PEPEUSDC"})
@@ -248,7 +308,6 @@ async def tarefa_sincronizada():
                     avisar_pepe[1] = 'off'
 
 
-
 @tarefa_sincronizada.before_loop
 async def antes_da_tarefa():
     """Aguarda o bot se conectar e sincroniza o primeiro disparo."""
@@ -259,31 +318,44 @@ async def antes_da_tarefa():
     await asyncio.sleep(espera)
 
 
-# {TENTA desligar o bot com segurança com Ctrl + C terminal}---------------------------------------------------------------------------------------------------
+# {CONSEGUE desligar o bot com segurança com Ctrl + C terminal}---------------------------------------------------------------------------------------------------
 
-# tenta não explodir o bot ao dar Ctrl + C
-def sleep_terminal(signum, frame):
+async def sleep_terminal():
+    """Desliga o bot com Ctrl + C"""
+    if tarefa_sincronizada.is_running():
+        tarefa_sincronizada.stop()
+
+    canal = bot.get_channel(1530050331495628890)
+
+    if canal:
+        await canal.send(f"Bot #desonline... <@{326041751024304139}>")
+        await canal.send("https://tenor.com/view/sleep-gif-12944899486400191725")
+        await bot.close()
+        print('\nBot desligado.\n')
+
+def explode_bot(signum, frame):
     try:
-        # Verifica se o loop do bot está rodando
         if bot.loop and bot.loop.is_running():
-            # Injeta a função assíncrona 'sleep()' no loop do bot
-            future = asyncio.run_coroutine_threadsafe(sleep2(), bot.loop)
-            # Aguarda a execução terminar (com um timeout de segurança de 5 segundos)
-            future.result(timeout=5)
+            print("\nExplodindo o bot...\n")
+            
+            # Cria uma tarefa em segundo plano dentro do loop do bot
+            # Isso impede o erro de 'never awaited'
+            asyncio.run_coroutine_threadsafe(sleep_terminal(), bot.loop)
+            return
+            
     except Exception as e:
-        print(f"Erro ao desligar o bot limpamente: {e}")
-    finally:
-        print("Saindo do terminal.\n")
-        sys.exit(0)
+        print(f"Erro ao explodir o bot: {e}")
 
-signal.signal(signal.SIGINT, sleep_terminal)
+    sys.exit(0)
 
+signal.signal(signal.SIGINT, explode_bot)
 
-# Inicia o bot
+# {inicia o bot}---------------------------------------------------------------------------------------------------
+
 try:
     bot.run(DISC_TOKEN)
-except KeyboardInterrupt:
-    #sleep()
-    print("Bot desligando.")
+except Exception as e:
+    print(f"Erro ao tentar iniciar o bot: {e}")
 
-#adicionar confirmação
+#TODO: adicionar resumo quando chamar !grafico (amplitude, valores mais repetidos, etc)
+#TODO: adicionar API de buy/sell e super confirmação
